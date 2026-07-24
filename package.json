@@ -1,0 +1,50 @@
+{
+  "name": "@gorban/google-health-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Google Health API: log meals and water, read sleep, activity and nutrition. Bring-your-own Google Cloud credentials.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "google-health-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "prepublishOnly": "npm run lint && npm run test && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gorban/google-health-mcp.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google-health",
+    "fitbit",
+    "nutrition",
+    "health",
+    "calories"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.17.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
