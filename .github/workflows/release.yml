@@ -33,10 +33,22 @@ jobs:
             exit 1
           fi
 
-      # prepublishOnly runs lint + tests + build
-      - run: npm publish
+      # prepublishOnly runs lint + tests + build; skip if this version is already on npm
+      - name: Publish to npm
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "google-health-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "google-health-mcp@$VERSION is already published, skipping npm publish"
+          else
+            npm publish
+          fi
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists, skipping"
+          else
+            gh release create "$GITHUB_REF_NAME" --generate-notes
+          fi

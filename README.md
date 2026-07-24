@@ -1,5 +1,12 @@
 # google-health-mcp
 
+[![npm version](https://img.shields.io/npm/v/google-health-mcp)](https://www.npmjs.com/package/google-health-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/google-health-mcp)](https://www.npmjs.com/package/google-health-mcp)
+[![CI](https://github.com/gorban-dev/google-health-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/gorban-dev/google-health-mcp/actions/workflows/ci.yml)
+[![node](https://img.shields.io/node/v/google-health-mcp)](https://nodejs.org)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![MCP](https://img.shields.io/badge/Model_Context_Protocol-server-8A2BE2)](https://modelcontextprotocol.io)
+
 MCP server for the **Google Health API**: any AI agent with vision can log your meals (calories and macros) into Google Health, and read back your sleep, activity and nutrition to reason about them together.
 
 Typical flow: you photograph your food and send it to your agent (Hermes Agent via Telegram, OpenClaw, Claude Desktop, Cursor...). The agent estimates the dishes and macros from the photo, calls `log_meal`, and a minute later the meal is in the Google Health app on your phone, next to your sleep and workouts.
