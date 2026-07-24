@@ -78,7 +78,10 @@ export class HealthApiClient {
       const body = (await res.json().catch(() => ({}))) as GoogleErrorBody;
       const reason = body.error?.details?.find((d) => d.reason)?.reason;
       let message = body.error?.message ?? `HTTP ${res.status}`;
-      if (res.status === 403) {
+      if (reason === "DATA_POINT_NOT_OWNED_BY_CLIENT") {
+        message =
+          "Google only lets the application that created an entry delete it, and this entry was created elsewhere (another API client or the Fitbit app). Ask the user to delete it manually in the Google Health app.";
+      } else if (res.status === 403) {
         message += " — likely a missing scope. Check the configured scopes and re-run `auth`.";
       }
       throw new ApiError(res.status, message, reason);
