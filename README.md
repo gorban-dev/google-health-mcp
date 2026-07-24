@@ -109,8 +109,6 @@ npm run lint    # biome
 npm run build
 ```
 
-See `docs/spike.md` for the live-API verification this design is based on, and `docs/journal.md` for decisions made during development.
-
 ## License
 
 MIT
