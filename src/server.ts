@@ -16,7 +16,7 @@ export function buildServer(): McpServer {
   const config = loadConfig();
   if (!config.clientId || !config.clientSecret) {
     throw new Error(
-      "Missing Google OAuth credentials. Run `npx @gorban/google-health-mcp setup`, or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+      "Missing Google OAuth credentials. Run `npx google-health-mcp setup`, or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
     );
   }
   const tokens = new TokenManager(config.clientId, config.clientSecret);

@@ -91,7 +91,7 @@ export async function runSetup(): Promise<void> {
     say("API responds. Setup complete.");
   } catch (e) {
     say(`Test request failed: ${e instanceof Error ? e.message : e}`);
-    say("Run `npx @gorban/google-health-mcp doctor` for diagnostics.");
+    say("Run `npx google-health-mcp doctor` for diagnostics.");
   }
 
   say("");
@@ -103,7 +103,7 @@ export async function runSetup(): Promise<void> {
         mcpServers: {
           "google-health": {
             command: "npx",
-            args: ["-y", "@gorban/google-health-mcp"],
+            args: ["-y", "google-health-mcp"],
           },
         },
       },

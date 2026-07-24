@@ -21,7 +21,7 @@ So instead every user creates their **own free Google Cloud project** (~10 minut
 Requirements: Node.js 20+, a Google account with Google Health (Fitbit) data.
 
 ```bash
-npx -y @gorban/google-health-mcp setup
+npx -y google-health-mcp setup
 ```
 
 The interactive wizard walks you through every step below, opens the right console pages, and finishes with a live test request. What it will ask you to do:
@@ -38,8 +38,8 @@ Credentials are stored in `~/.config/google-health-mcp/` (`config.json`, `tokens
 Other commands:
 
 ```bash
-npx -y @gorban/google-health-mcp auth    # re-authorize only
-npx -y @gorban/google-health-mcp doctor  # diagnostics: tokens, permissions, API test call
+npx -y google-health-mcp auth    # re-authorize only
+npx -y google-health-mcp doctor  # diagnostics: tokens, permissions, API test call
 ```
 
 ### One more thing: make nutrition visible in the app
@@ -55,7 +55,7 @@ The config is the same everywhere — stdio via `npx`:
   "mcpServers": {
     "google-health": {
       "command": "npx",
-      "args": ["-y", "@gorban/google-health-mcp"]
+      "args": ["-y", "google-health-mcp"]
     }
   }
 }

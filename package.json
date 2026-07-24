@@ -1,5 +1,5 @@
 {
-  "name": "@gorban/google-health-mcp",
+  "name": "google-health-mcp",
   "version": "0.1.0",
   "description": "MCP server for the Google Health API: log meals and water, read sleep, activity and nutrition. Bring-your-own Google Cloud credentials.",
   "license": "MIT",

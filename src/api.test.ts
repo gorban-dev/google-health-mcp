@@ -52,7 +52,9 @@ describe("HealthApiClient.request", () => {
   it("gives up after two 429 retries", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse(429, { error: { message: "rate limited" } }, { "Retry-After": "0" }));
+      .mockResolvedValue(
+        jsonResponse(429, { error: { message: "rate limited" } }, { "Retry-After": "0" }),
+      );
     const api = new HealthApiClient(stubTokens(), fetchMock);
 
     await expect(api.request("GET", "users/me/settings")).rejects.toThrow(ApiError);

@@ -5,7 +5,7 @@ import { rl, say } from "./ui.js";
 export async function runAuth(): Promise<void> {
   const config = loadConfig();
   if (!config.clientId || !config.clientSecret) {
-    say("No OAuth credentials configured. Run `npx @gorban/google-health-mcp setup` first.");
+    say("No OAuth credentials configured. Run `npx google-health-mcp setup` first.");
     process.exitCode = 1;
     rl.close();
     return;

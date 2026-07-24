@@ -157,7 +157,7 @@ export class TokenManager {
     this.cached ??= loadTokens();
     if (!this.cached) {
       throw new AuthError(
-        "Not authorized. Run `npx @gorban/google-health-mcp setup` (first time) or `... auth`.",
+        "Not authorized. Run `npx google-health-mcp setup` (first time) or `... auth`.",
       );
     }
     if (forceRefresh || Date.now() >= this.cached.expiresAt - EXPIRY_SLACK_MS) {

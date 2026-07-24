@@ -22,9 +22,7 @@ describe("civilToUtc", () => {
   });
 
   it("handles UTC timezone as identity", () => {
-    expect(civilToUtc("2026-07-24", "13:00", "UTC").toISOString()).toBe(
-      "2026-07-24T13:00:00.000Z",
-    );
+    expect(civilToUtc("2026-07-24", "13:00", "UTC").toISOString()).toBe("2026-07-24T13:00:00.000Z");
   });
 });
 
