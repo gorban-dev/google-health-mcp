@@ -1,4 +1,4 @@
-# google-health-mcp
+![Google Health MCP — log meals from photos via any AI agent](assets/cover.png)
 
 [![npm version](https://img.shields.io/npm/v/google-health-mcp)](https://www.npmjs.com/package/google-health-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/google-health-mcp)](https://www.npmjs.com/package/google-health-mcp)
