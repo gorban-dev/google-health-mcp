@@ -5,7 +5,7 @@ description: Publish a new release of google-health-mcp to npm and GitHub. Use w
 
 # Releasing google-health-mcp
 
-Releases are driven by git tags: pushing a `v*` tag runs `.github/workflows/release.yml`, which lints, tests, builds, publishes to npm (trusted publishing, no tokens) and creates a GitHub release with generated notes.
+Releases are driven by git tags: pushing a `v*` tag runs `.github/workflows/release.yml`, which lints, tests, builds, publishes to npm (trusted publishing, no tokens) and creates a GitHub release whose notes are the version's section from `CHANGELOG.md`.
 
 ## Steps
 
@@ -14,8 +14,8 @@ Releases are driven by git tags: pushing a `v*` tag runs `.github/workflows/rele
    git status              # no uncommitted changes
    npm run lint && npm test
    ```
-2. Decide the bump: `patch` for fixes, `minor` for new tools/features, `major` for breaking changes to tool schemas or config format.
-3. If notable behavior changed, record it in `docs/journal.md` and commit.
+2. Decide the bump: default is `patch` — fixes AND small additions (CLI commands, echoed fields). `minor` is reserved for new MCP tools or notable features — confirm with Sergey first. `major` for breaking changes to tool schemas or config format.
+3. MANDATORY: add a `## [x.y.z] — YYYY-MM-DD` section to `CHANGELOG.md` (Keep a Changelog format: Added/Changed/Fixed; include upgrade steps for existing users when behavior or config recommendations change) and a compare link at the bottom. The release workflow uses this section as the GitHub release notes — a version without a section falls back to auto-generated notes, which is a bug, not a feature. Record internal details in `docs/journal.md` (gitignored). Commit the changelog.
 4. Bump the version and tag (one command does both):
    ```bash
    npm version patch   # or minor / major — creates commit "x.y.z" and tag "vx.y.z"

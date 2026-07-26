@@ -71,6 +71,8 @@ The config is the same everywhere — stdio via `npx`:
 
 `@latest` makes npx re-resolve the newest published version on every client start, so updates arrive automatically. Without it, npx serves a cached copy indefinitely.
 
+**Installed before 0.1.3?** Your config likely has the bare `google-health-mcp` spec and is stuck on an old cached version. Change it to `google-health-mcp@latest`, run `rm -rf ~/.npm/_npx` once (download cache only — credentials in `~/.config/google-health-mcp/` are untouched), restart the client. Details in [CHANGELOG.md](CHANGELOG.md).
+
 - **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
 - **Cursor**: `~/.cursor/mcp.json`.
 - **Hermes Agent**: add the same block to the `mcp_servers` section of your Hermes config.
