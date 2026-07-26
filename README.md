@@ -11,6 +11,8 @@ MCP server for the **Google Health API**: any AI agent with vision can log your 
 
 Typical flow: you photograph your food and send it to your agent (Hermes Agent via Telegram, OpenClaw, Claude Desktop, Cursor...). The agent estimates the dishes and macros from the photo, calls `log_meal`, and a minute later the meal is in the Google Health app on your phone, next to your sleep and workouts.
 
+And in the other direction — ask the agent *"how was my last month?"* and it pulls a day-by-day table (steps, calories in/out, macros, water, weight, resting heart rate, sleep, workouts) with a single `get_health_overview` call, then reasons about it: whether protein is behind your target, how late meals correlate with bad sleep, whether the weight trend matches the calorie deficit. Say *"I weighed in at 82.4"* and it lands in Google Health via `log_weight`.
+
 Built for the new Google Health API (`health.googleapis.com/v4`) — the legacy Fitbit Web API shuts down in September 2026 and this server does **not** depend on it.
 
 ## Why you need your own Google Cloud project (read this first)

@@ -2,6 +2,14 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [SemVer](https://semver.org/); until 1.0.0 the MCP tool schemas may change in minor versions.
 
+## [Unreleased]
+
+### Fixed
+- MCP handshake (`serverInfo.version`) reported a hardcoded `0.1.0`; now reads the real version from package.json.
+
+### Changed
+- README: added the reverse flow to the intro — health overview, trend reasoning and weight logging by voice, not just meal photos.
+
 ## [0.2.0] — 2026-07-26
 
 ### Added

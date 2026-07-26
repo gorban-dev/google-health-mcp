@@ -5,8 +5,7 @@ import { loadConfig, resolveTimezone } from "./config.js";
 import { TokenManager } from "./oauth.js";
 import { registerReadTools } from "./tools/read.js";
 import { registerWriteTools } from "./tools/write.js";
-
-export const SERVER_VERSION = "0.1.0";
+import { packageVersion } from "./version.js";
 
 /**
  * Builds the MCP server independent of transport, so a Streamable HTTP
@@ -23,7 +22,7 @@ export function buildServer(): McpServer {
   const api = new HealthApiClient(tokens);
   const ctx = { api, timezone: resolveTimezone(config) };
 
-  const server = new McpServer({ name: "google-health-mcp", version: SERVER_VERSION });
+  const server = new McpServer({ name: "google-health-mcp", version: packageVersion() });
   registerWriteTools(server, ctx);
   registerReadTools(server, ctx);
   return server;
