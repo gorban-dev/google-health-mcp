@@ -2,6 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { ApiError, HealthApiClient } from "../api.js";
 import { configPath, loadConfig, loadTokens, tokensPath } from "../config.js";
 import { AuthError, TokenManager } from "../oauth.js";
+import { latestPublishedVersion, packageVersion } from "../version.js";
 import { rl, say } from "./ui.js";
 
 function check(label: string, ok: boolean, detail?: string): boolean {
@@ -10,9 +11,19 @@ function check(label: string, ok: boolean, detail?: string): boolean {
 }
 
 export async function runDoctor(): Promise<void> {
-  say("google-health-mcp doctor");
+  const version = packageVersion();
+  say(`google-health-mcp doctor (v${version})`);
   say("");
   let healthy = true;
+
+  const latest = await latestPublishedVersion();
+  if (latest === version) {
+    check("Latest published version", true, version);
+  } else if (latest) {
+    say(`INFO  Newer version on npm — local ${version}, npm ${latest}`);
+    say(`      To refresh a stale npx cache: npx -y google-health-mcp@latest doctor`);
+    say(`      To stay current automatically, use "google-health-mcp@latest" in your MCP client config.`);
+  }
 
   const nodeMajor = Number(process.versions.node.split(".")[0]);
   healthy = check("Node.js >= 20", nodeMajor >= 20, `running ${process.versions.node}`) && healthy;

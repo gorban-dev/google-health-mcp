@@ -45,8 +45,9 @@ Credentials are stored in `~/.config/google-health-mcp/` (`config.json`, `tokens
 Other commands:
 
 ```bash
-npx -y google-health-mcp auth    # re-authorize only
-npx -y google-health-mcp doctor  # diagnostics: tokens, permissions, API test call
+npx -y google-health-mcp auth      # re-authorize only
+npx -y google-health-mcp doctor    # diagnostics: tokens, permissions, API test call, update check
+npx -y google-health-mcp version   # print the installed version
 ```
 
 ### One more thing: make nutrition visible in the app
@@ -62,11 +63,13 @@ The config is the same everywhere — stdio via `npx`:
   "mcpServers": {
     "google-health": {
       "command": "npx",
-      "args": ["-y", "google-health-mcp"]
+      "args": ["-y", "google-health-mcp@latest"]
     }
   }
 }
 ```
+
+`@latest` makes npx re-resolve the newest published version on every client start, so updates arrive automatically. Without it, npx serves a cached copy indefinitely.
 
 - **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
 - **Cursor**: `~/.cursor/mcp.json`.

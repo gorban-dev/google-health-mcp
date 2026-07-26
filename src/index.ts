@@ -20,13 +20,20 @@ async function main(): Promise<void> {
       await runDoctor();
       break;
     }
+    case "version":
+    case "--version":
+    case "-v": {
+      const { packageVersion } = await import("./version.js");
+      console.log(packageVersion());
+      break;
+    }
     case undefined:
     case "serve":
       await runStdioServer();
       break;
     default:
       console.error(
-        `Unknown command "${command}". Usage: google-health-mcp [setup|auth|doctor|serve]`,
+        `Unknown command "${command}". Usage: google-health-mcp [setup|auth|doctor|serve|version]`,
       );
       process.exitCode = 1;
   }

@@ -103,7 +103,7 @@ export async function runSetup(): Promise<void> {
         mcpServers: {
           "google-health": {
             command: "npx",
-            args: ["-y", "google-health-mcp"],
+            args: ["-y", "google-health-mcp@latest"],
           },
         },
       },
