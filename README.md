@@ -89,7 +89,8 @@ Write:
 | `log_meal` | Log a whole meal as separate items (so one mistake can be deleted alone). Returns entry names and meal totals |
 | `log_food` | Log a single food item |
 | `log_water` | Log water intake in ml |
-| `delete_food_log` | Delete entries by name — the correction path, since Google Health nutrition entries created via API are not editable |
+| `log_weight` | Log body weight in kg, optionally with body fat % |
+| `delete_food_log` | Delete entries by name — the correction path, since Google Health entries created via API are not editable |
 
 Read:
 
@@ -99,10 +100,17 @@ Read:
 | `get_daily_summary` | Steps, calories burned, active minutes |
 | `get_sleep` / `get_sleep_range` | Sleep sessions with stages |
 | `get_activity_range` | Per-day activity for a period |
+| `get_nutrition_range` | Per-day calories, macros and water for a period |
+| `get_weight_range` | Daily average weight and body fat |
+| `get_heart_rate_range` | Daily resting heart rate and min/avg/max BPM |
+| `get_workouts` | Exercise sessions with duration, calories, distance, avg HR |
 | `get_hrv` | Daily heart rate variability |
+| `get_health_overview` | Day-by-day table of all of the above in one call — the entry point for analysis and recommendations |
 | `get_profile` | Timezone, measurement units |
 
-The read set exists so the agent can answer questions like "how does my eating affect my sleep" — it can correlate, not just write.
+The read set exists so the agent can answer questions like "how does my eating affect my sleep" — it can correlate, not just write. `get_health_overview` is designed for exactly that: one call returns up to 90 days of combined data.
+
+Weight, body fat and heart rate need the `health_metrics_and_measurements.readonly` scope. It is now in the default set; if you authorized with an older version, re-run `npx -y google-health-mcp@latest auth` once to grant it.
 
 ## Accuracy disclaimer
 

@@ -1,4 +1,14 @@
-import type { MealType, NutrientQuantity, NutritionLog, SessionTimeInterval } from "./types.js";
+import type {
+  ActiveMinutesRollupValue,
+  CivilDate,
+  DataPoint,
+  Exercise,
+  MealType,
+  NutrientQuantity,
+  NutritionLog,
+  NutritionLogRollupValue,
+  SessionTimeInterval,
+} from "./types.js";
 
 export interface FoodItemInput {
   name: string;
@@ -105,4 +115,91 @@ export function nextDay(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
+}
+
+export function civilDateToIso(date: CivilDate | undefined): string | undefined {
+  if (!date) return undefined;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.year}-${pad(date.month)}-${pad(date.day)}`;
+}
+
+/**
+ * Civil date of an RFC-3339 timestamp shifted by a protobuf offset ("10800s").
+ * List responses carry only UTC time + offset, without civil time fields.
+ */
+export function civilDateOf(
+  time: string | undefined,
+  utcOffset: string | undefined,
+): string | undefined {
+  if (!time) return undefined;
+  const ms = Date.parse(time);
+  if (!Number.isFinite(ms)) return undefined;
+  const offsetSec = Number.parseFloat(utcOffset ?? "0");
+  const shifted = ms + (Number.isFinite(offsetSec) ? offsetSec * 1000 : 0);
+  return new Date(shifted).toISOString().slice(0, 10);
+}
+
+/** Protobuf duration string ("5400s") to whole minutes. */
+export function durationToMinutes(duration: string | undefined): number | undefined {
+  if (!duration) return undefined;
+  const seconds = Number.parseFloat(duration);
+  return Number.isFinite(seconds) ? Math.round(seconds / 60) : undefined;
+}
+
+export interface NutritionDayTotals {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  sugar: number;
+}
+
+/** Daily nutrition-log rollup value to flat per-day totals. */
+export function rollupToNutritionDay(v: NutritionLogRollupValue): NutritionDayTotals {
+  const grams = (n: string) => v.nutrients?.find((x) => x.nutrient === n)?.quantity?.gramsSum ?? 0;
+  return {
+    calories: v.energy?.kcalSum ?? 0,
+    protein: grams("PROTEIN"),
+    fat: v.totalFat?.gramsSum ?? 0,
+    carbs: v.totalCarbohydrate?.gramsSum ?? 0,
+    fiber: grams("DIETARY_FIBER"),
+    sugar: grams("SUGAR"),
+  };
+}
+
+/** Total active minutes across LIGHT/MODERATE/VIGOROUS levels. */
+export function activeMinutesTotal(v: ActiveMinutesRollupValue | undefined): number {
+  return (v?.activeMinutesRollupByActivityLevel ?? []).reduce(
+    (sum, level) => sum + (Number(level.activeMinutesSum) || 0),
+    0,
+  );
+}
+
+/** Exercise data point to a compact workout row for tool output. */
+export function exerciseToWorkout(p: DataPoint): Record<string, unknown> {
+  const ex: Exercise = p.exercise ?? {};
+  const m = ex.metricsSummary ?? {};
+  const durationMin =
+    durationToMinutes(ex.activeDuration) ??
+    (ex.interval?.startTime && ex.interval.endTime
+      ? Math.round((Date.parse(ex.interval.endTime) - Date.parse(ex.interval.startTime)) / 60_000)
+      : undefined);
+  return {
+    name: p.name,
+    type: ex.exerciseType,
+    displayName: ex.displayName,
+    start: ex.interval?.startTime,
+    durationMin,
+    calories: m.caloriesKcal,
+    avgHeartRate: m.averageHeartRateBeatsPerMinute
+      ? Number(m.averageHeartRateBeatsPerMinute)
+      : undefined,
+    distanceKm:
+      m.distanceMillimeters !== undefined
+        ? Math.round(m.distanceMillimeters / 10_000) / 100
+        : undefined,
+    steps: m.steps !== undefined ? Number(m.steps) : undefined,
+    ...(ex.notes ? { notes: ex.notes } : {}),
+  };
 }

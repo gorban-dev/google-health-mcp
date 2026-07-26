@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { civilToUtc, isValidDate, logInterval, utcOffsetSeconds } from "./time.js";
+import { civilToUtc, isValidDate, logInterval, sampleTimeAt, utcOffsetSeconds } from "./time.js";
 
 describe("utcOffsetSeconds", () => {
   it("returns +3h for Cyprus in summer (EEST)", () => {
@@ -34,6 +34,13 @@ describe("logInterval", () => {
     expect(interval.endTime).toBe("2026-07-24T10:01:00.000Z");
     expect(interval.startUtcOffset).toBe("10800s");
     expect(interval.endUtcOffset).toBe("10800s");
+  });
+});
+
+describe("sampleTimeAt", () => {
+  it("pairs the instant with its local UTC offset", () => {
+    const sample = sampleTimeAt(new Date("2026-07-24T05:00:00Z"), "Asia/Nicosia");
+    expect(sample).toEqual({ physicalTime: "2026-07-24T05:00:00.000Z", utcOffset: "10800s" });
   });
 });
 

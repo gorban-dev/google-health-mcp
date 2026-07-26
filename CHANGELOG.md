@@ -2,6 +2,21 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [SemVer](https://semver.org/); until 1.0.0 the MCP tool schemas may change in minor versions.
 
+## [0.2.0] — 2026-07-26
+
+### Added
+- Range read tools for agent-side analysis and recommendations:
+  - `get_nutrition_range` — per-day calories, protein/fat/carbs, fiber, sugar and water via daily rollups (one API call per 90 days instead of one `get_food_log` per day).
+  - `get_weight_range` — daily average weight (kg) and body fat (%).
+  - `get_heart_rate_range` — daily resting heart rate plus min/avg/max BPM.
+  - `get_workouts` — exercise sessions with type, duration, calories, average heart rate, distance and steps.
+  - `get_health_overview` — day-by-day table combining steps, calories in/out, macros, water, weight, resting heart rate, sleep minutes and workouts; degrades gracefully (with a `warnings` field) when the health-metrics scope is missing.
+- `log_weight` — log body weight (kg), optionally with body fat percentage; `delete_food_log` deletes weight/body-fat entries too.
+- `health_metrics_and_measurements.readonly` and `.writeonly` added to the default scope set — required for weight, body fat, heart rate and the already-shipped `get_hrv`. Existing installs: re-run `npx -y google-health-mcp@latest auth` once to grant them.
+
+### Not added
+- `update_food_log`: investigated in depth 2026-07-26. `dataPoints.patch` itself works (verified on hydration-log: body = full data value without `name`, no `updateMask`), but nutrition-log returns HTTP 500 `INTERNAL_ERROR` on every field combination. Root cause is a legacy Fitbit restriction the v4 backend inherited: food logs created via `foodName` (anonymous food — the only creatable kind in v4) were never editable; v4 surfaces this as 500 instead of a clean error. Delete + re-log remains the correction path; details in docs/journal.md.
+
 ## [0.1.3] — 2026-07-26
 
 ### Added
@@ -37,6 +52,7 @@ Version bump existed only in git; the changes shipped as part of 0.1.2.
 
 First release: MCP server over the Google Health API with bring-your-own Google Cloud credentials. Tools: `log_meal`, `log_food`, `log_water`, `delete_food_log`, nutrition/sleep/activity reads. CLI: `setup`, `auth`, `doctor`.
 
+[0.2.0]: https://github.com/gorban-dev/google-health-mcp/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/gorban-dev/google-health-mcp/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/gorban-dev/google-health-mcp/compare/v0.1.0...v0.1.2
 [0.1.0]: https://github.com/gorban-dev/google-health-mcp/releases/tag/v0.1.0

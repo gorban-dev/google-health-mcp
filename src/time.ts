@@ -2,7 +2,7 @@
 // all date math here is done against the user's configured IANA timezone, never the
 // server's locale.
 
-import type { SessionTimeInterval } from "./types.js";
+import type { ObservationSampleTime, SessionTimeInterval } from "./types.js";
 
 /** UTC offset in seconds for the given instant in the given IANA timezone. */
 export function utcOffsetSeconds(instant: Date, timeZone: string): number {
@@ -49,6 +49,14 @@ export function logInterval(start: Date, timeZone: string): SessionTimeInterval 
     endTime: end.toISOString(),
     startUtcOffset: `${utcOffsetSeconds(start, timeZone)}s`,
     endUtcOffset: `${utcOffsetSeconds(end, timeZone)}s`,
+  };
+}
+
+/** Sample time for point-in-time observations (weight, body fat). */
+export function sampleTimeAt(at: Date, timeZone: string): ObservationSampleTime {
+  return {
+    physicalTime: at.toISOString(),
+    utcOffset: `${utcOffsetSeconds(at, timeZone)}s`,
   };
 }
 

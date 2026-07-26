@@ -1,6 +1,13 @@
 import { existsSync, statSync } from "node:fs";
 import { ApiError, HealthApiClient } from "../api.js";
-import { configPath, loadConfig, loadTokens, tokensPath } from "../config.js";
+import {
+  SCOPE_PREFIX,
+  configPath,
+  fullScopes,
+  loadConfig,
+  loadTokens,
+  tokensPath,
+} from "../config.js";
 import { AuthError, TokenManager } from "../oauth.js";
 import { latestPublishedVersion, packageVersion } from "../version.js";
 import { rl, say } from "./ui.js";
@@ -42,6 +49,17 @@ export async function runDoctor(): Promise<void> {
 
   const tokens = loadTokens();
   healthy = check("Tokens present", Boolean(tokens), tokensPath()) && healthy;
+
+  if (tokens) {
+    const missing = fullScopes(config).filter((s) => !tokens.scopes.includes(s));
+    if (missing.length > 0) {
+      const short = missing.map((s) => s.replace(SCOPE_PREFIX, "")).join(", ");
+      say(`INFO  Token is missing ${missing.length} of the expected scopes: ${short}`);
+      say(
+        "      Tools relying on them will get 403 — re-run: npx -y google-health-mcp@latest auth",
+      );
+    }
+  }
 
   for (const path of [configPath(), tokensPath()]) {
     if (existsSync(path)) {

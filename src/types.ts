@@ -38,8 +38,8 @@ export interface SessionTimeInterval {
   endTime: string;
   startUtcOffset: string;
   endUtcOffset: string;
-  civilStartTime?: unknown;
-  civilEndTime?: unknown;
+  civilStartTime?: { date?: CivilDate; time?: unknown };
+  civilEndTime?: { date?: CivilDate; time?: unknown };
 }
 
 export type MealType =
@@ -72,10 +72,60 @@ export interface HydrationLog {
   interval: SessionTimeInterval;
 }
 
+export interface MetricsSummary {
+  caloriesKcal?: number;
+  distanceMillimeters?: number;
+  elevationGainMillimeters?: number;
+  steps?: string;
+  averageHeartRateBeatsPerMinute?: string;
+}
+
+export interface Exercise {
+  displayName?: string;
+  exerciseType?: string;
+  /** Duration excluding pauses, e.g. "3600s". */
+  activeDuration?: string;
+  interval?: SessionTimeInterval;
+  metricsSummary?: MetricsSummary;
+  notes?: string;
+}
+
+export interface SleepSummary {
+  minutesAsleep?: string;
+  minutesAwake?: string;
+  minutesInSleepPeriod?: string;
+  minutesToFallAsleep?: string;
+}
+
+export interface DailyRestingHeartRate {
+  date?: CivilDate;
+  beatsPerMinute?: string;
+}
+
+export interface ObservationSampleTime {
+  physicalTime: string;
+  utcOffset: string;
+}
+
+export interface Weight {
+  sampleTime: ObservationSampleTime;
+  weightGrams: number;
+  notes?: string;
+}
+
+export interface BodyFat {
+  sampleTime: ObservationSampleTime;
+  percentage: number;
+}
+
 export interface DataPoint {
   name?: string;
   nutritionLog?: NutritionLog;
   hydrationLog?: HydrationLog;
+  exercise?: Exercise;
+  dailyRestingHeartRate?: DailyRestingHeartRate;
+  weight?: Weight;
+  bodyFat?: BodyFat;
   [key: string]: unknown;
 }
 
@@ -94,6 +144,46 @@ export interface CivilDate {
   year: number;
   month: number;
   day: number;
+}
+
+export interface EnergyQuantityRollup {
+  kcalSum?: number;
+}
+
+export interface WeightQuantityRollup {
+  gramsSum?: number;
+}
+
+export interface NutritionLogRollupValue {
+  energy?: EnergyQuantityRollup;
+  totalFat?: WeightQuantityRollup;
+  totalCarbohydrate?: WeightQuantityRollup;
+  nutrients?: Array<{ nutrient?: string; quantity?: WeightQuantityRollup }>;
+}
+
+export interface HydrationLogRollupValue {
+  amountConsumed?: { millilitersSum?: number };
+}
+
+export interface WeightRollupValue {
+  weightGramsAvg?: number;
+}
+
+export interface BodyFatRollupValue {
+  bodyFatPercentageAvg?: number;
+}
+
+export interface HeartRateRollupValue {
+  beatsPerMinuteMin?: number;
+  beatsPerMinuteAvg?: number;
+  beatsPerMinuteMax?: number;
+}
+
+export interface ActiveMinutesRollupValue {
+  activeMinutesRollupByActivityLevel?: Array<{
+    activityLevel?: "ACTIVITY_LEVEL_UNSPECIFIED" | "LIGHT" | "MODERATE" | "VIGOROUS";
+    activeMinutesSum?: string;
+  }>;
 }
 
 export interface RollupDataPoint {

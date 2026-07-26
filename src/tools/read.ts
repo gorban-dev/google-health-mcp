@@ -1,14 +1,40 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { civilDayFilter, nextDay, sumLogs } from "../mappers.js";
+import {
+  activeMinutesTotal,
+  civilDateOf,
+  civilDateToIso,
+  civilDayFilter,
+  durationToMinutes,
+  exerciseToWorkout,
+  nextDay,
+  rollupToNutritionDay,
+  sumLogs,
+} from "../mappers.js";
 import { isValidDate, todayInTimezone } from "../time.js";
-import type { NutritionLog, RollupDataPoint } from "../types.js";
+import type {
+  ActiveMinutesRollupValue,
+  BodyFatRollupValue,
+  HeartRateRollupValue,
+  HydrationLogRollupValue,
+  NutritionLog,
+  NutritionLogRollupValue,
+  RollupDataPoint,
+  SessionTimeInterval,
+  SleepSummary,
+  WeightRollupValue,
+} from "../types.js";
 import { type ToolContext, jsonResult, safe } from "./context.js";
 
 const dateParam = z
   .string()
   .optional()
   .describe("YYYY-MM-DD in the user's timezone; defaults to today");
+
+const rangeParams = {
+  start: z.string().describe("YYYY-MM-DD, inclusive"),
+  end: z.string().describe("YYYY-MM-DD, exclusive"),
+};
 
 /** Max civil-date span for heart-rate-derived types per API docs. */
 const HR_MAX_RANGE_DAYS = 14;
@@ -39,14 +65,18 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function rollupDate(point: RollupDataPoint): string | undefined {
+  return civilDateToIso(point.civilStartTime?.date);
+}
+
 /** Strip civil time wrappers from a rollup point: {date, ...typed value}. */
 function flattenRollup(point: RollupDataPoint): Record<string, unknown> {
   const { civilStartTime, civilEndTime, ...value } = point;
-  const d = civilStartTime?.date;
-  const date = d
-    ? `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`
-    : undefined;
-  return { date, ...value };
+  return { date: rollupDate(point), ...value };
+}
+
+function sortedByDate(days: Map<string, Record<string, unknown>>): Record<string, unknown>[] {
+  return [...days.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 
 /** dailyRollUp with automatic chunking to respect the 14-day cap on HR-derived types. */
@@ -75,6 +105,14 @@ async function rolledUpDays(
 
 function sleepFilter(start: string, end: string): string {
   return `sleep.interval.civil_end_time >= "${start}" AND sleep.interval.civil_end_time < "${end}"`;
+}
+
+function restingHrFilter(start: string, end: string): string {
+  return `daily_resting_heart_rate.date >= "${start}" AND daily_resting_heart_rate.date < "${end}"`;
+}
+
+function exerciseFilter(start: string, end: string): string {
+  return `exercise.interval.civil_start_time >= "${start}" AND exercise.interval.civil_start_time < "${end}"`;
 }
 
 async function fetchSleep(ctx: ToolContext, start: string, end: string) {
@@ -226,6 +264,248 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         start,
         end,
         days: points.map((p) => ({ name: p.name, ...(p.dailyHeartRateVariability as object) })),
+      });
+    }),
+  );
+
+  server.registerTool(
+    "get_nutrition_range",
+    {
+      title: "Get nutrition for a date range",
+      description:
+        "Per-day nutrition totals for [start, end): calories, protein, fat, carbs, fiber, sugar and water. One call instead of get_food_log per day — use for analyzing the diet over a week or month.",
+      inputSchema: rangeParams,
+    },
+    safe(async ({ start, end }) => {
+      assertRange(start, end);
+      const [food, water] = await Promise.all([
+        ctx.api.dailyRollUp("nutrition-log", start, end),
+        ctx.api.dailyRollUp("hydration-log", start, end),
+      ]);
+      const days = new Map<string, Record<string, unknown>>();
+      for (const p of food.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        if (!date) continue;
+        days.set(date, {
+          date,
+          ...rollupToNutritionDay((p.nutritionLog ?? {}) as NutritionLogRollupValue),
+        });
+      }
+      for (const p of water.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        if (!date) continue;
+        const row = days.get(date) ?? { date };
+        row.waterMl =
+          (p.hydrationLog as HydrationLogRollupValue | undefined)?.amountConsumed?.millilitersSum ??
+          0;
+        days.set(date, row);
+      }
+      return jsonResult({ start, end, days: sortedByDate(days) });
+    }),
+  );
+
+  server.registerTool(
+    "get_weight_range",
+    {
+      title: "Get weight and body fat for a date range",
+      description:
+        "Daily average weight (kg) and body fat (%) for [start, end) from Google Health. Days without measurements are omitted. Requires the health_metrics_and_measurements.readonly scope; on a 403 re-run `npx google-health-mcp auth`.",
+      inputSchema: rangeParams,
+    },
+    safe(async ({ start, end }) => {
+      assertRange(start, end);
+      const [weight, bodyFat] = await Promise.all([
+        ctx.api.dailyRollUp("weight", start, end),
+        ctx.api.dailyRollUp("body-fat", start, end),
+      ]);
+      const days = new Map<string, Record<string, unknown>>();
+      for (const p of weight.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        const grams = (p.weight as WeightRollupValue | undefined)?.weightGramsAvg;
+        if (!date || grams === undefined) continue;
+        days.set(date, { date, weightKg: Math.round(grams / 100) / 10 });
+      }
+      for (const p of bodyFat.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        const pct = (p.bodyFat as BodyFatRollupValue | undefined)?.bodyFatPercentageAvg;
+        if (!date || pct === undefined) continue;
+        const row = days.get(date) ?? { date };
+        row.bodyFatPct = Math.round(pct * 10) / 10;
+        days.set(date, row);
+      }
+      return jsonResult({ start, end, days: sortedByDate(days) });
+    }),
+  );
+
+  server.registerTool(
+    "get_heart_rate_range",
+    {
+      title: "Get heart rate for a date range",
+      description:
+        "Daily resting heart rate plus min/avg/max BPM for [start, end) from Google Health. Requires the health_metrics_and_measurements.readonly scope; on a 403 re-run `npx google-health-mcp auth`.",
+      inputSchema: rangeParams,
+    },
+    safe(async ({ start, end }) => {
+      assertRange(start, end);
+      const [rolled, resting] = await Promise.all([
+        rolledUpDays(ctx, "heart-rate", start, end),
+        ctx.api.listDataPoints("daily-resting-heart-rate", restingHrFilter(start, end)),
+      ]);
+      const days = new Map<string, Record<string, unknown>>();
+      for (const r of rolled) {
+        const date = r.date as string | undefined;
+        if (!date) continue;
+        const hr = r.heartRate as HeartRateRollupValue | undefined;
+        days.set(date, {
+          date,
+          minBpm: hr?.beatsPerMinuteMin,
+          avgBpm: hr?.beatsPerMinuteAvg,
+          maxBpm: hr?.beatsPerMinuteMax,
+        });
+      }
+      for (const p of resting) {
+        const date = civilDateToIso(p.dailyRestingHeartRate?.date);
+        if (!date) continue;
+        const row = days.get(date) ?? { date };
+        row.restingBpm = Number(p.dailyRestingHeartRate?.beatsPerMinute) || undefined;
+        days.set(date, row);
+      }
+      return jsonResult({ start, end, days: sortedByDate(days) });
+    }),
+  );
+
+  server.registerTool(
+    "get_workouts",
+    {
+      title: "Get workouts for a date range",
+      description:
+        "Exercise sessions starting inside [start, end) from Google Health: type, duration, calories, average heart rate, distance and steps per workout.",
+      inputSchema: rangeParams,
+    },
+    safe(async ({ start, end }) => {
+      assertRange(start, end);
+      const points = await ctx.api.listDataPoints("exercise", exerciseFilter(start, end));
+      return jsonResult({ start, end, workouts: points.map(exerciseToWorkout) });
+    }),
+  );
+
+  server.registerTool(
+    "get_health_overview",
+    {
+      title: "Get day-by-day health overview",
+      description:
+        "One call for trend analysis and recommendations: per-day steps, calories burned, active minutes, calories eaten + macros, water, weight, resting heart rate, sleep minutes and workouts for [start, end). Start here when reasoning about the user's health; drill down with get_sleep_range, get_workouts or get_food_log for details.",
+      inputSchema: rangeParams,
+    },
+    safe(async ({ start, end }) => {
+      assertRange(start, end);
+      const warnings: string[] = [];
+      const optional = <T>(label: string, p: Promise<T>): Promise<T | undefined> =>
+        p.catch((e) => {
+          warnings.push(`${label}: ${e instanceof Error ? e.message : String(e)}`);
+          return undefined;
+        });
+      const [
+        steps,
+        calories,
+        activeMinutes,
+        food,
+        water,
+        weight,
+        resting,
+        sleepSessions,
+        workouts,
+      ] = await Promise.all([
+        rolledUpDays(ctx, "steps", start, end),
+        rolledUpDays(ctx, "total-calories", start, end),
+        rolledUpDays(ctx, "active-minutes", start, end),
+        ctx.api.dailyRollUp("nutrition-log", start, end),
+        ctx.api.dailyRollUp("hydration-log", start, end),
+        optional("weight", ctx.api.dailyRollUp("weight", start, end)),
+        optional(
+          "restingHeartRate",
+          ctx.api.listDataPoints("daily-resting-heart-rate", restingHrFilter(start, end)),
+        ),
+        ctx.api.listDataPoints("sleep", sleepFilter(start, end)),
+        ctx.api.listDataPoints("exercise", exerciseFilter(start, end)),
+      ]);
+
+      const days = new Map<string, Record<string, unknown>>();
+      const day = (date: string): Record<string, unknown> => {
+        const row = days.get(date) ?? { date };
+        days.set(date, row);
+        return row;
+      };
+      for (const r of steps) {
+        if (!r.date) continue;
+        day(r.date as string).steps = Number((r.steps as { countSum?: string })?.countSum) || 0;
+      }
+      for (const r of calories) {
+        if (!r.date) continue;
+        day(r.date as string).caloriesOut = (r.totalCalories as { kcalSum?: number })?.kcalSum;
+      }
+      for (const r of activeMinutes) {
+        if (!r.date) continue;
+        day(r.date as string).activeMinutes = activeMinutesTotal(
+          r.activeMinutes as ActiveMinutesRollupValue | undefined,
+        );
+      }
+      for (const p of food.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        if (!date) continue;
+        const n = rollupToNutritionDay((p.nutritionLog ?? {}) as NutritionLogRollupValue);
+        Object.assign(day(date), {
+          caloriesIn: n.calories,
+          protein: n.protein,
+          fat: n.fat,
+          carbs: n.carbs,
+        });
+      }
+      for (const p of water.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        if (!date) continue;
+        day(date).waterMl =
+          (p.hydrationLog as HydrationLogRollupValue | undefined)?.amountConsumed?.millilitersSum ??
+          0;
+      }
+      for (const p of weight?.rollupDataPoints ?? []) {
+        const date = rollupDate(p);
+        const grams = (p.weight as WeightRollupValue | undefined)?.weightGramsAvg;
+        if (!date || grams === undefined) continue;
+        day(date).weightKg = Math.round(grams / 100) / 10;
+      }
+      for (const p of resting ?? []) {
+        const date = civilDateToIso(p.dailyRestingHeartRate?.date);
+        if (!date) continue;
+        day(date).restingBpm = Number(p.dailyRestingHeartRate?.beatsPerMinute) || undefined;
+      }
+      for (const p of sleepSessions) {
+        const s = p.sleep as { interval?: SessionTimeInterval; summary?: SleepSummary } | undefined;
+        const date =
+          civilDateToIso(s?.interval?.civilEndTime?.date) ??
+          civilDateOf(s?.interval?.endTime, s?.interval?.endUtcOffset);
+        const minutes = Number(s?.summary?.minutesAsleep);
+        if (!date || !Number.isFinite(minutes)) continue;
+        const row = day(date);
+        row.sleepMinutes = ((row.sleepMinutes as number) ?? 0) + minutes;
+      }
+      for (const p of workouts) {
+        const ex = p.exercise;
+        const date =
+          civilDateToIso(ex?.interval?.civilStartTime?.date) ??
+          civilDateOf(ex?.interval?.startTime, ex?.interval?.startUtcOffset);
+        if (!date) continue;
+        const row = day(date);
+        const label = `${ex?.displayName ?? ex?.exerciseType ?? "workout"} (${
+          durationToMinutes(ex?.activeDuration) ?? "?"
+        } min)`;
+        row.workouts = [...((row.workouts as string[]) ?? []), label];
+      }
+      return jsonResult({
+        start,
+        end,
+        days: sortedByDate(days),
+        ...(warnings.length > 0 ? { warnings } : {}),
       });
     }),
   );

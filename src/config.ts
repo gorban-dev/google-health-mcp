@@ -8,6 +8,8 @@ export const DEFAULT_SCOPES = [
   "nutrition.readonly",
   "sleep.readonly",
   "activity_and_fitness.readonly",
+  "health_metrics_and_measurements.readonly",
+  "health_metrics_and_measurements.writeonly",
   "settings.readonly",
   "profile.readonly",
 ];

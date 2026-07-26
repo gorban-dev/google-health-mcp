@@ -1,7 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { type FoodItemInput, MEAL_TYPE_MAP, itemToNutritionLog, sumItems } from "../mappers.js";
-import { civilToUtc, isValidDate, logInterval, mealStart, todayInTimezone } from "../time.js";
+import {
+  civilToUtc,
+  isValidDate,
+  logInterval,
+  mealStart,
+  sampleTimeAt,
+  todayInTimezone,
+} from "../time.js";
 import { type ToolContext, errorResult, jsonResult, safe } from "./context.js";
 
 const foodItemShape = {
@@ -172,11 +179,56 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
   );
 
   server.registerTool(
+    "log_weight",
+    {
+      title: "Log body weight",
+      description:
+        "Log a body weight measurement (kg) to Google Health, optionally with body fat percentage. Defaults to now for today, 08:00 for past dates. Entries are not editable: to fix one, delete_food_log with the returned name(s), then log again.",
+      inputSchema: {
+        weightKg: z.number().positive().describe("Weight in kilograms"),
+        bodyFatPct: z
+          .number()
+          .min(1)
+          .max(75)
+          .optional()
+          .describe("Body fat percentage, if measured"),
+        date: dateParam,
+        time: timeParam,
+        notes: z.string().optional().describe("Free-form note stored with the weight entry"),
+      },
+    },
+    safe(async ({ weightKg, bodyFatPct, date, time, notes }) => {
+      const day = resolveDate(date, ctx.timezone);
+      const at = time
+        ? civilToUtc(day, time, ctx.timezone)
+        : day === todayInTimezone(ctx.timezone)
+          ? new Date()
+          : civilToUtc(day, "08:00", ctx.timezone);
+      const sampleTime = sampleTimeAt(at, ctx.timezone);
+      const weightPoint = await ctx.api.createDataPoint("weight", {
+        weight: {
+          sampleTime,
+          weightGrams: Math.round(weightKg * 1000),
+          ...(notes ? { notes } : {}),
+        },
+      });
+      const logged: Record<string, unknown> = { name: weightPoint.name ?? "", weightKg };
+      if (bodyFatPct !== undefined) {
+        const fatPoint = await ctx.api.createDataPoint("body-fat", {
+          bodyFat: { sampleTime, percentage: bodyFatPct },
+        });
+        logged.bodyFat = { name: fatPoint.name ?? "", bodyFatPct };
+      }
+      return jsonResult({ logged, date: day });
+    }),
+  );
+
+  server.registerTool(
     "delete_food_log",
     {
       title: "Delete food log entries",
       description:
-        "Delete nutrition or hydration entries by their full resource names (as returned by log_meal, log_food, log_water or get_food_log). Use when the user wants to correct a mistaken entry: delete it, then log the corrected version.",
+        "Delete data point entries created by this server — nutrition, hydration, weight or body fat — by their full resource names (as returned by log_meal, log_food, log_water, log_weight or get_food_log). Use when the user wants to correct a mistaken entry: delete it, then log the corrected version.",
       inputSchema: {
         names: z.array(z.string()).min(1).describe("Full data point resource names to delete"),
       },
