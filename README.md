@@ -133,4 +133,4 @@ npm run build
 
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 Sergey Gorban
