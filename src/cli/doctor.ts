@@ -21,8 +21,10 @@ export async function runDoctor(): Promise<void> {
     check("Latest published version", true, version);
   } else if (latest) {
     say(`INFO  Newer version on npm — local ${version}, npm ${latest}`);
-    say(`      To refresh a stale npx cache: npx -y google-health-mcp@latest doctor`);
-    say(`      To stay current automatically, use "google-health-mcp@latest" in your MCP client config.`);
+    say("      To refresh a stale npx cache: npx -y google-health-mcp@latest doctor");
+    say(
+      `      To stay current automatically, use "google-health-mcp@latest" in your MCP client config.`,
+    );
   }
 
   const nodeMajor = Number(process.versions.node.split(".")[0]);
