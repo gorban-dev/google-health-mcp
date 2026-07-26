@@ -46,7 +46,7 @@ const LOG_MEAL_DESCRIPTION = `Log a full meal (several dishes) to Google Health.
 - Fill calories and macros (protein/fat/carbs) for every item; add fiber/sugar/sodium when you can estimate them.
 - Set "confidence" honestly per item. When confidence is low for a significant item, ASK the user instead of guessing.
 - If the user did not name the meal type, infer it from the local time of day.
-Each item becomes a separate entry, so the user can delete one mistaken item without touching the rest. Returns created entry names (keep them if the user may want corrections) and meal totals. Entries are NOT editable: to fix one, delete_food_log then log again.`;
+Each item becomes a separate entry, so the user can delete one mistaken item without touching the rest. Returns created entry names (keep them if the user may want corrections), per-item confidence echoed back, and meal totals. Entries are NOT editable: to fix one, delete_food_log then log again.`;
 
 function resolveDate(date: string | undefined, timezone: string): string {
   const d = date ?? todayInTimezone(timezone);
@@ -80,12 +80,22 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
         : mealStart(day, apiMealType, ctx.timezone);
       const interval = logInterval(start, ctx.timezone);
 
-      const created: Array<{ name: string; item: string; calories: number }> = [];
+      const created: Array<{
+        name: string;
+        item: string;
+        calories: number;
+        confidence?: "high" | "medium" | "low";
+      }> = [];
       for (const item of items as FoodItemInput[]) {
         const point = await ctx.api.createDataPoint("nutrition-log", {
           nutritionLog: itemToNutritionLog(item, apiMealType, interval),
         });
-        created.push({ name: point.name ?? "", item: item.name, calories: item.calories });
+        created.push({
+          name: point.name ?? "",
+          item: item.name,
+          calories: item.calories,
+          ...(item.confidence ? { confidence: item.confidence } : {}),
+        });
       }
       return jsonResult({
         logged: created,
@@ -124,7 +134,14 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
           logInterval(start, ctx.timezone),
         ),
       });
-      return jsonResult({ logged: { name: point.name ?? "", item: (item as FoodItemInput).name } });
+      const foodItem = item as FoodItemInput;
+      return jsonResult({
+        logged: {
+          name: point.name ?? "",
+          item: foodItem.name,
+          ...(foodItem.confidence ? { confidence: foodItem.confidence } : {}),
+        },
+      });
     }),
   );
 
