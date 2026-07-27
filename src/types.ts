@@ -33,6 +33,28 @@ export interface NutrientQuantity {
   quantity: WeightQuantity;
 }
 
+export interface FoodServing {
+  amount?: number;
+  foodMeasurementUnit: string;
+  foodMeasurementUnitDisplayName?: string;
+  foodMeasurementUnitDisplayNamePlural?: string;
+  multiplier?: number;
+}
+
+export interface Food {
+  displayName?: string;
+  brand?: string;
+  accessLevel?: string;
+  languageCode?: string;
+  energyAvg?: EnergyQuantity;
+  energyFromFat?: EnergyQuantity;
+  totalFat?: WeightQuantity;
+  totalCarbohydrate?: WeightQuantity;
+  nutrients?: NutrientQuantity[];
+  defaultServing?: FoodServing;
+  servings?: FoodServing[];
+}
+
 export interface SessionTimeInterval {
   startTime: string;
   endTime: string;
@@ -121,6 +143,7 @@ export interface BodyFat {
 export interface DataPoint {
   name?: string;
   nutritionLog?: NutritionLog;
+  food?: Food;
   hydrationLog?: HydrationLog;
   exercise?: Exercise;
   dailyRestingHeartRate?: DailyRestingHeartRate;

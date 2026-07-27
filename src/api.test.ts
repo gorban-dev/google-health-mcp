@@ -119,3 +119,51 @@ describe("caching", () => {
     expect(points.map((p) => p.name)).toEqual(["p1", "p2"]);
   });
 });
+
+describe("point get / update / search", () => {
+  const NAME = "users/42/dataTypes/nutrition-log/dataPoints/777";
+
+  it("getDataPoint GETs the resource name and caches", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse(200, { name: NAME }));
+    const api = new HealthApiClient(stubTokens(), fetchMock);
+    await expect(api.getDataPoint(NAME)).resolves.toEqual({ name: NAME });
+    await api.getDataPoint(NAME);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`https://health.googleapis.com/v4/${NAME}`);
+    await api.getDataPoint(NAME, false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("updateDataPoint PATCHes without name in the body and invalidates the cache", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (url, init) => {
+      if (init?.method === "PATCH")
+        return jsonResponse(200, { done: true, response: { name: NAME } });
+      return jsonResponse(200, { dataPoints: [{ name: NAME }] });
+    });
+    const api = new HealthApiClient(stubTokens(), fetchMock);
+    await api.listDataPoints("nutrition-log");
+    await api.updateDataPoint(NAME, { name: NAME, nutritionLog: { interval: {} } } as never);
+    const patchCall = fetchMock.mock.calls.find((c) => (c[1] as RequestInit).method === "PATCH");
+    expect(String(patchCall?.[0])).toBe(`https://health.googleapis.com/v4/${NAME}`);
+    const body = JSON.parse((patchCall?.[1] as RequestInit).body as string);
+    expect(body.name).toBeUndefined();
+    expect(body.nutritionLog).toBeDefined();
+    await api.listDataPoints("nutrition-log");
+    expect(
+      fetchMock.mock.calls.filter((c) => (c[1] as RequestInit).method !== "PATCH"),
+    ).toHaveLength(2);
+  });
+
+  it("searchDataPoints requests one page with filter and pageSize", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(200, { dataPoints: [{ name: "f1" }], nextPageToken: "t" }));
+    const api = new HealthApiClient(stubTokens(), fetchMock);
+    const points = await api.searchDataPoints("food", 'food.display_name = "x"', 10);
+    expect(points).toEqual([{ name: "f1" }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(url.searchParams.get("filter")).toBe('food.display_name = "x"');
+    expect(url.searchParams.get("pageSize")).toBe("10");
+  });
+});

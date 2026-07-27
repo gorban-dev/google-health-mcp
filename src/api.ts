@@ -126,6 +126,32 @@ export class HealthApiClient {
     return useCache ? this.cached(key, load) : load();
   }
 
+  /** Point get by full resource name, e.g. users/42/dataTypes/food/dataPoints/123. */
+  async getDataPoint(name: string, useCache = true): Promise<DataPoint> {
+    const load = () => this.request<DataPoint>("GET", name);
+    return useCache ? this.cached(`get/${name}`, load) : load();
+  }
+
+  /** Full-value replace via PATCH. The API rejects bodies that contain `name`. */
+  async updateDataPoint(name: string, body: DataPoint): Promise<DataPoint> {
+    const { name: _stripped, ...rest } = body;
+    const op = await this.request<Operation>("PATCH", name, { body: rest });
+    if (op.error) throw new ApiError(op.error.code, op.error.message);
+    const dataType = name.match(/\/dataTypes\/([^/]+)\//)?.[1];
+    if (dataType) this.invalidate(dataType);
+    return op.response ?? {};
+  }
+
+  /** Single page of matches — for ranked searches where the top hits suffice. */
+  async searchDataPoints(dataType: string, filter: string, pageSize: number): Promise<DataPoint[]> {
+    const page = await this.request<ListDataPointsResponse>(
+      "GET",
+      `users/me/dataTypes/${dataType}/dataPoints`,
+      { query: { filter, pageSize: String(pageSize) } },
+    );
+    return page.dataPoints ?? [];
+  }
+
   async createDataPoint(dataType: string, body: DataPoint): Promise<DataPoint> {
     const op = await this.request<Operation>("POST", `users/me/dataTypes/${dataType}/dataPoints`, {
       body,
