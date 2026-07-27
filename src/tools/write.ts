@@ -226,8 +226,12 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
       inputSchema: {
         name: z.string().describe("Full nutrition-log resource name"),
         mealType: mealTypeParam.optional(),
-        date: dateParam,
-        time: timeParam,
+        date: dateParam.describe(
+          "New date YYYY-MM-DD in the user's timezone; omit to keep the entry's date",
+        ),
+        time: timeParam.describe(
+          "New HH:MM local time; omit to keep the entry's time (or meal-typical hour if only the date changes)",
+        ),
         amount: z
           .number()
           .positive()

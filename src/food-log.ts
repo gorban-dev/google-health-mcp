@@ -3,7 +3,7 @@
 import type { HealthApiClient } from "./api.js";
 import { MEAL_TYPE_MAP, civilDateOf, itemToNutritionLog } from "./mappers.js";
 import type { FoodItemInput } from "./mappers.js";
-import { civilToUtc, logInterval, mealStart } from "./time.js";
+import { civilToUtc, isValidDate, logInterval, mealStart } from "./time.js";
 import type { Food, FoodServing, MealType, NutritionLog, SessionTimeInterval } from "./types.js";
 
 export function resolveServing(food: Food, unitId?: string): FoodServing {
@@ -109,7 +109,7 @@ function nutrientOf(log: NutritionLog, nutrient: string): number | undefined {
   return log.nutrients?.find((n) => n.nutrient === nutrient)?.quantity.grams;
 }
 
-/** New interval if date/time/mealType changed; the existing one (cleaned) otherwise. */
+/** New interval if date/time changed; the existing one (cleaned) otherwise. */
 function resolveInterval(
   log: NutritionLog,
   changes: FoodLogChanges,
@@ -141,6 +141,9 @@ export async function updateFoodLog(
   if (!log) throw new Error(`"${name}" is not a nutrition-log entry.`);
   const mealType = changes.mealType ? MEAL_TYPE_MAP[changes.mealType] : undefined;
   if (changes.mealType && !mealType) throw new Error(`Unknown mealType "${changes.mealType}".`);
+  if (changes.date && !isValidDate(changes.date)) {
+    throw new Error(`Invalid date "${changes.date}", expected YYYY-MM-DD.`);
+  }
   if (changes.servingDescription !== undefined && changes.foodName === undefined) {
     throw new Error("servingDescription can only be changed together with foodName.");
   }
@@ -185,6 +188,7 @@ export async function updateFoodLog(
       ? `${changes.foodName} (${changes.servingDescription})`
       : changes.foodName
     : (log.foodDisplayName ?? "");
+  // Only FoodItemInput's nutrients survive a recreate; other stored nutrients would be lost.
   const item: FoodItemInput = {
     name: displayName,
     calories: changes.calories ?? log.energy?.kcal ?? 0,

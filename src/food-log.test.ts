@@ -257,4 +257,12 @@ describe("updateFoodLog: anonymous entries", () => {
     const api = new HealthApiClient(stubTokens(), fetchMock);
     await expect(updateFoodLog(api, ENTRY, { calories: 1 }, "UTC")).rejects.toThrow(/not found/i);
   });
+
+  it("rejects a malformed date before touching the API", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse(200, anonymous));
+    const api = new HealthApiClient(stubTokens(), fetchMock);
+    await expect(updateFoodLog(api, ENTRY, { date: "July 27" }, "UTC")).rejects.toThrow(
+      /expected YYYY-MM-DD/,
+    );
+  });
 });
