@@ -7,6 +7,7 @@ import {
   civilDayFilter,
   durationToMinutes,
   exerciseToWorkout,
+  foodSearchResult,
   nextDay,
   rollupToNutritionDay,
   sumLogs,
@@ -161,6 +162,34 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
         items,
         totals: sumLogs(foodPoints.map((p) => p.nutritionLog as NutritionLog)),
         waterMl,
+      });
+    }),
+  );
+
+  server.registerTool(
+    "search_food",
+    {
+      title: "Search the food database",
+      description:
+        "Search the Google Health public food database (packaged and branded products; en_US only — always translate the query to English). Returns foodId and unit ids for log_food_from_db. For home-cooked or photo-estimated meals prefer log_meal/log_food with your own estimates; use the database when the user names a packaged/branded product.",
+      inputSchema: {
+        query: z.string().min(2).describe('Food name in English, e.g. "greek yogurt"'),
+        limit: z.number().int().min(1).max(25).optional().describe("Max results, default 10"),
+      },
+    },
+    safe(async ({ query, limit }) => {
+      const escaped = (query as string).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const points = await ctx.api.searchDataPoints(
+        "food",
+        `food.display_name = "${escaped}"`,
+        limit ?? 10,
+      );
+      const results = points.map(foodSearchResult);
+      return jsonResult({
+        results,
+        ...(results.length === 0 && /[^\x20-\x7E]/.test(query as string)
+          ? { hint: "The food database is English-only — try an English query." }
+          : {}),
       });
     }),
   );
