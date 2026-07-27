@@ -1,6 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { buildIdentifiedLog, resolveServing } from "../food-log.js";
+import {
+  type FoodLogChanges,
+  buildIdentifiedLog,
+  resolveServing,
+  updateFoodLog,
+} from "../food-log.js";
 import { type FoodItemInput, MEAL_TYPE_MAP, itemToNutritionLog, sumItems } from "../mappers.js";
 import {
   civilToUtc,
@@ -54,7 +59,7 @@ const LOG_MEAL_DESCRIPTION = `Log a full meal (several dishes) to Google Health.
 - Fill calories and macros (protein/fat/carbs) for every item; add fiber/sugar/sodium when you can estimate them.
 - Set "confidence" honestly per item. When confidence is low for a significant item, ASK the user instead of guessing.
 - If the user did not name the meal type, infer it from the local time of day.
-Each item becomes a separate entry, so the user can delete one mistaken item without touching the rest. Returns created entry names (keep them if the user may want corrections), per-item confidence echoed back, and meal totals. Entries are NOT editable: to fix one, delete_food_log then log again.`;
+Each item becomes a separate entry, so the user can delete one mistaken item without touching the rest. Returns created entry names (keep them if the user may want corrections), per-item confidence echoed back, and meal totals. To fix a mistaken entry use update_food_log (the entry is recreated under a new name) or delete_food_log + re-log.`;
 
 function resolveDate(date: string | undefined, timezone: string): string {
   const d = date ?? todayInTimezone(timezone);
@@ -213,6 +218,64 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
   );
 
   server.registerTool(
+    "update_food_log",
+    {
+      title: "Update a food log entry",
+      description:
+        "Edit an existing nutrition entry by its resource name. Entries from log_food_from_db are edited in place (change amount/unitId/mealType/date/time). Entries from log_meal/log_food cannot be edited by Google — they are transparently deleted and recreated with the changes, so the response carries a NEW name and recreated: true (update saved references).",
+      inputSchema: {
+        name: z.string().describe("Full nutrition-log resource name"),
+        mealType: mealTypeParam.optional(),
+        date: dateParam,
+        time: timeParam,
+        amount: z
+          .number()
+          .positive()
+          .optional()
+          .describe("New portion count (database entries only)"),
+        unitId: z.string().optional().describe("New unit resource name (database entries only)"),
+        foodName: z.string().optional().describe("New dish name (anonymous entries only)"),
+        calories: z.number().min(0).optional().describe("New kcal (anonymous entries only)"),
+        protein: z.number().min(0).optional().describe("Protein, grams (anonymous only)"),
+        fat: z.number().min(0).optional().describe("Total fat, grams (anonymous only)"),
+        carbs: z.number().min(0).optional().describe("Carbohydrates, grams (anonymous only)"),
+        fiber: z.number().min(0).optional().describe("Dietary fiber, grams (anonymous only)"),
+        sugar: z.number().min(0).optional().describe("Sugar, grams (anonymous only)"),
+        sodium: z.number().min(0).optional().describe("Sodium, MILLIGRAMS (anonymous only)"),
+        servingDescription: z
+          .string()
+          .optional()
+          .describe("Portion text appended to foodName; only together with foodName"),
+      },
+    },
+    safe(async ({ name, ...changes }) => {
+      if (!/^users\/[^/]+\/dataTypes\/nutrition-log\/dataPoints\/[^/]+$/.test(name as string)) {
+        return errorResult(
+          `"${name}" is not a nutrition-log entry name. Only nutrition entries can be updated.`,
+        );
+      }
+      if (Object.values(changes).every((v) => v === undefined)) {
+        return errorResult("Nothing to change — pass at least one field.");
+      }
+      const result = await updateFoodLog(
+        ctx.api,
+        name as string,
+        changes as FoodLogChanges,
+        ctx.timezone,
+      );
+      return jsonResult({
+        updated: {
+          name: result.name,
+          item: result.log.foodDisplayName,
+          mealType: result.log.mealType,
+          calories: result.log.energy?.kcal,
+        },
+        ...(result.recreated ? { recreated: true } : {}),
+      });
+    }),
+  );
+
+  server.registerTool(
     "log_water",
     {
       title: "Log water intake",
@@ -243,7 +306,7 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
     {
       title: "Log body weight",
       description:
-        "Log a body weight measurement (kg) to Google Health, optionally with body fat percentage. Defaults to now for today, 08:00 for past dates. Entries are not editable: to fix one, delete_food_log with the returned name(s), then log again.",
+        "Log a body weight measurement (kg) to Google Health, optionally with body fat percentage. Defaults to now for today, 08:00 for past dates. Weight entries are not editable: to fix one, delete_food_log with the returned name(s), then log again.",
       inputSchema: {
         weightKg: z.number().positive().describe("Weight in kilograms"),
         bodyFatPct: z
