@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildIdentifiedLog, resolveServing } from "../food-log.js";
 import { type FoodItemInput, MEAL_TYPE_MAP, itemToNutritionLog, sumItems } from "../mappers.js";
 import {
   civilToUtc,
@@ -148,6 +149,65 @@ export function registerWriteTools(server: McpServer, ctx: ToolContext): void {
           item: foodItem.name,
           ...(foodItem.confidence ? { confidence: foodItem.confidence } : {}),
         },
+      });
+    }),
+  );
+
+  server.registerTool(
+    "log_food_from_db",
+    {
+      title: "Log a food from the database",
+      description:
+        "Log a food from the Google Health food database by foodId (from search_food). Nutrition comes from the database, scaled to the portion. Unlike log_meal/log_food entries, entries logged this way ARE editable in place with update_food_log.",
+      inputSchema: {
+        foodId: z.string().describe("Full food resource name returned by search_food"),
+        amount: z
+          .number()
+          .positive()
+          .optional()
+          .describe("Portion count in the chosen unit, default 1"),
+        unitId: z
+          .string()
+          .optional()
+          .describe(
+            "Unit resource name from search_food units; defaults to the food's default serving",
+          ),
+        mealType: mealTypeParam,
+        date: dateParam,
+        time: timeParam,
+      },
+    },
+    safe(async ({ foodId, amount, unitId, mealType, date, time }) => {
+      const day = resolveDate(date, ctx.timezone);
+      const apiMealType = MEAL_TYPE_MAP[mealType];
+      if (!apiMealType) return errorResult(`Unknown mealType "${mealType}".`);
+      const foodPoint = await ctx.api.getDataPoint(foodId as string);
+      if (!foodPoint.food) return errorResult(`"${foodId}" is not a food database entry.`);
+      const serving = resolveServing(foodPoint.food, unitId as string | undefined);
+      const qty = (amount as number | undefined) ?? 1;
+      const start = time
+        ? civilToUtc(day, time, ctx.timezone)
+        : mealStart(day, apiMealType, ctx.timezone);
+      const log = buildIdentifiedLog(
+        foodId as string,
+        foodPoint.food,
+        serving,
+        qty,
+        apiMealType,
+        logInterval(start, ctx.timezone),
+      );
+      const point = await ctx.api.createDataPoint("nutrition-log", { nutritionLog: log });
+      return jsonResult({
+        logged: {
+          name: point.name ?? "",
+          item: foodPoint.food.displayName?.trim() ?? "",
+          calories: log.energy?.kcal,
+          amount: qty,
+          ...(serving.foodMeasurementUnitDisplayName
+            ? { unit: serving.foodMeasurementUnitDisplayName }
+            : {}),
+        },
+        editable: true,
       });
     }),
   );
