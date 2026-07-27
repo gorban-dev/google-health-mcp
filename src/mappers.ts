@@ -3,6 +3,7 @@ import type {
   CivilDate,
   DataPoint,
   Exercise,
+  Food,
   MealType,
   NutrientQuantity,
   NutritionLog,
@@ -102,6 +103,42 @@ export function sumLogs(logs: NutritionLog[]): MealTotals & { fiber: number; sug
     }),
     { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0, sugar: 0 },
   );
+}
+
+export interface FoodSearchResult {
+  foodId: string;
+  name: string;
+  brand?: string;
+  caloriesPerServing?: number;
+  serving?: string;
+  units: Array<{ unitId: string; name?: string; multiplier?: number }>;
+  protein?: number;
+  fat?: number;
+  carbs?: number;
+}
+
+/** Compact a public food database point for tool output (raw points are ~300 lines). */
+export function foodSearchResult(point: DataPoint): FoodSearchResult {
+  const food: Food = point.food ?? {};
+  const def = food.defaultServing;
+  const protein = food.nutrients?.find((n) => n.nutrient === "PROTEIN")?.quantity.grams;
+  return {
+    foodId: point.name ?? "",
+    name: food.displayName?.trim() ?? "",
+    ...(food.brand ? { brand: food.brand } : {}),
+    ...(food.energyAvg ? { caloriesPerServing: food.energyAvg.kcal } : {}),
+    ...(def?.foodMeasurementUnitDisplayName
+      ? { serving: `${def.amount ?? 1} ${def.foodMeasurementUnitDisplayName}` }
+      : {}),
+    units: (food.servings ?? []).map((s) => ({
+      unitId: s.foodMeasurementUnit,
+      ...(s.foodMeasurementUnitDisplayName ? { name: s.foodMeasurementUnitDisplayName } : {}),
+      ...(s.multiplier !== undefined ? { multiplier: s.multiplier } : {}),
+    })),
+    ...(protein !== undefined ? { protein } : {}),
+    ...(food.totalFat ? { fat: food.totalFat.grams } : {}),
+    ...(food.totalCarbohydrate ? { carbs: food.totalCarbohydrate.grams } : {}),
+  };
 }
 
 /** Civil-date closed-open filter for session data types, e.g. nutrition_log. */

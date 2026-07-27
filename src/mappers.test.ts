@@ -6,6 +6,7 @@ import {
   civilDayFilter,
   durationToMinutes,
   exerciseToWorkout,
+  foodSearchResult,
   itemToNutritionLog,
   rollupToNutritionDay,
   sumItems,
@@ -215,5 +216,78 @@ describe("exerciseToWorkout", () => {
       },
     });
     expect(workout.durationMin).toBe(30);
+  });
+});
+
+describe("foodSearchResult", () => {
+  const point = {
+    name: "users/42/dataTypes/food/dataPoints/2000251121",
+    food: {
+      displayName: " 100% Pure Pumpkin ",
+      brand: "Bowl & Basket",
+      accessLevel: "FOOD_ACCESS_LEVEL_PUBLIC",
+      languageCode: "en_US",
+      nutrients: [
+        { quantity: { grams: 1 }, nutrient: "PROTEIN" },
+        { quantity: { grams: 3 }, nutrient: "DIETARY_FIBER" },
+      ],
+      totalCarbohydrate: { grams: 4 },
+      totalFat: { grams: 0.5 },
+      energyAvg: { kcal: 50 },
+      defaultServing: {
+        amount: 1,
+        foodMeasurementUnit: "users/me/dataTypes/food-measurement-unit/dataPoints/251",
+        foodMeasurementUnitDisplayName: "cup",
+        multiplier: 1,
+      },
+      servings: [
+        {
+          amount: 1,
+          foodMeasurementUnit: "users/me/dataTypes/food-measurement-unit/dataPoints/251",
+          foodMeasurementUnitDisplayName: "cup",
+          multiplier: 1,
+        },
+        {
+          amount: 1,
+          foodMeasurementUnit: "users/me/dataTypes/food-measurement-unit/dataPoints/147",
+          foodMeasurementUnitDisplayName: "gram",
+          multiplier: 0.10869565217391305,
+        },
+      ],
+    },
+  };
+
+  it("compacts a food point to a search result", () => {
+    expect(foodSearchResult(point)).toEqual({
+      foodId: "users/42/dataTypes/food/dataPoints/2000251121",
+      name: "100% Pure Pumpkin",
+      brand: "Bowl & Basket",
+      caloriesPerServing: 50,
+      serving: "1 cup",
+      units: [
+        {
+          unitId: "users/me/dataTypes/food-measurement-unit/dataPoints/251",
+          name: "cup",
+          multiplier: 1,
+        },
+        {
+          unitId: "users/me/dataTypes/food-measurement-unit/dataPoints/147",
+          name: "gram",
+          multiplier: 0.10869565217391305,
+        },
+      ],
+      protein: 1,
+      fat: 0.5,
+      carbs: 4,
+    });
+  });
+
+  it("tolerates a food with no servings or macros", () => {
+    const bare = { name: "users/42/dataTypes/food/dataPoints/1", food: { displayName: "X" } };
+    expect(foodSearchResult(bare)).toEqual({
+      foodId: "users/42/dataTypes/food/dataPoints/1",
+      name: "X",
+      units: [],
+    });
   });
 });
