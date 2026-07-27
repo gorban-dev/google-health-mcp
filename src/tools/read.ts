@@ -130,7 +130,7 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
     {
       title: "Get food log for a day",
       description:
-        "Read the Google Health food diary for one day: every logged item with its resource name (needed for delete_food_log), daily nutrient totals and water intake.",
+        "Read the Google Health food diary for one day: every logged item with its resource name (needed for delete_food_log), daily nutrient totals and water intake. Items with editable: true come from the food database and can be edited in place with update_food_log; others are recreated on update.",
       inputSchema: { date: dateParam },
     },
     safe(async ({ date }) => {
@@ -151,6 +151,10 @@ export function registerReadTools(server: McpServer, ctx: ToolContext): void {
           fat: log.totalFat?.grams,
           carbs: log.totalCarbohydrate?.grams,
           time: log.interval.startTime,
+          editable: Boolean(log.food),
+          ...(log.food
+            ? { amount: log.serving?.amount, unitId: log.serving?.foodMeasurementUnit }
+            : {}),
         };
       });
       const waterMl = waterPoints.reduce(
