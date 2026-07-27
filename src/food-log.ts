@@ -28,9 +28,8 @@ export function scaledNutrition(
   amount: number,
 ): Pick<NutritionLog, "energy" | "nutrients" | "totalFat" | "totalCarbohydrate"> {
   const factor = amount * (serving.multiplier ?? 1);
-  const out: Pick<NutritionLog, "energy" | "nutrients" | "totalFat" | "totalCarbohydrate"> = {
-    energy: { kcal: Math.round((food.energyAvg?.kcal ?? 0) * factor * 10) / 10 },
-  };
+  const out: Pick<NutritionLog, "energy" | "nutrients" | "totalFat" | "totalCarbohydrate"> = {};
+  if (food.energyAvg) out.energy = { kcal: Math.round(food.energyAvg.kcal * factor * 10) / 10 };
   if (food.totalFat) out.totalFat = { grams: round3(food.totalFat.grams * factor) };
   if (food.totalCarbohydrate) {
     out.totalCarbohydrate = { grams: round3(food.totalCarbohydrate.grams * factor) };

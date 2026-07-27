@@ -57,6 +57,11 @@ describe("scaledNutrition", () => {
     expect(n.totalFat).toBeUndefined();
     expect(n.nutrients).toBeUndefined();
   });
+  it("omits energy when the food has no energyAvg", () => {
+    const n = scaledNutrition({ totalFat: { grams: 1 } }, { foodMeasurementUnit: CUP }, 2);
+    expect(n.energy).toBeUndefined();
+    expect(n.totalFat?.grams).toBe(2);
+  });
 });
 
 describe("buildIdentifiedLog", () => {
