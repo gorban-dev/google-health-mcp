@@ -2,7 +2,14 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow [SemVer](https://semver.org/); until 1.0.0 the MCP tool schemas may change in minor versions.
 
-## [Unreleased]
+## [0.3.0] — 2026-07-27
+
+### Added
+- `search_food` — search the public food database (packaged/branded products, `en_US` — always translate queries to English). Returns `foodId` and unit ids for `log_food_from_db`.
+- `log_food_from_db` — log a database food by portion (amount + unit). Nutrition is computed client-side from the database values, scaled to the portion. Unlike `log_meal`/`log_food` entries, these ARE editable in place.
+- `update_food_log` — edit an existing nutrition entry. Database entries (from `log_food_from_db`) are PATCHed in place. Estimated entries (from `log_meal`/`log_food`) are still not editable server-side; they are transparently deleted and recreated under a new name (`recreated: true`).
+- `editable` flag on each item in `get_food_log`, so a client can tell in advance which entries `update_food_log` will patch vs. recreate.
+- Supersedes the 0.2.0 "Not added" finding below: identified (database) food logging turned out to be implementable. Google support ([issue 539032884](https://issuetracker.google.com/issues/539032884)) clarified that `NutritionLog.serving.foodMeasurementUnit` must be set when referencing a `food` — without it, both create and patch fail with an opaque 500 `INTERNAL_ERROR`; with it, both work. Verified live 2026-07-27; details in docs/journal.md.
 
 ### Fixed
 - MCP handshake (`serverInfo.version`) reported a hardcoded `0.1.0`; now reads the real version from package.json.
@@ -60,6 +67,7 @@ Version bump existed only in git; the changes shipped as part of 0.1.2.
 
 First release: MCP server over the Google Health API with bring-your-own Google Cloud credentials. Tools: `log_meal`, `log_food`, `log_water`, `delete_food_log`, nutrition/sleep/activity reads. CLI: `setup`, `auth`, `doctor`.
 
+[0.3.0]: https://github.com/gorban-dev/google-health-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/gorban-dev/google-health-mcp/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/gorban-dev/google-health-mcp/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/gorban-dev/google-health-mcp/compare/v0.1.0...v0.1.2

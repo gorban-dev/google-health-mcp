@@ -90,15 +90,18 @@ Write:
 |---|---|
 | `log_meal` | Log a whole meal as separate items (so one mistake can be deleted alone). Returns entry names and meal totals |
 | `log_food` | Log a single food item |
+| `log_food_from_db` | Log a database food (from `search_food`) by portion; the entry is editable in place |
 | `log_water` | Log water intake in ml |
 | `log_weight` | Log body weight in kg, optionally with body fat % |
-| `delete_food_log` | Delete entries by name — the correction path, since Google Health entries created via API are not editable |
+| `update_food_log` | Edit an entry: database entries are patched in place, estimated (`log_meal`/`log_food`) entries are deleted and recreated under a new name (`recreated: true`) |
+| `delete_food_log` | Delete entries by name — the correction path for estimated entries, which are not editable; database entries can also be corrected with `update_food_log` |
 
 Read:
 
 | Tool | Purpose |
 |---|---|
 | `get_food_log` | Food diary and nutrient totals for a day |
+| `search_food` | Search the public food database (packaged/branded products; English queries only) |
 | `get_daily_summary` | Steps, calories burned, active minutes |
 | `get_sleep` / `get_sleep_range` | Sleep sessions with stages |
 | `get_activity_range` | Per-day activity for a period |
@@ -113,6 +116,8 @@ Read:
 The read set exists so the agent can answer questions like "how does my eating affect my sleep" — it can correlate, not just write. `get_health_overview` is designed for exactly that: one call returns up to 90 days of combined data.
 
 Weight, body fat and heart rate need the `health_metrics_and_measurements.readonly` scope. It is now in the default set; if you authorized with an older version, re-run `npx -y google-health-mcp@latest auth` once to grant it.
+
+The food database (`search_food` / `log_food_from_db`) is English-only (`en_US`) — queries and results stay in English regardless of the user's language. Nutrition for database entries is computed client-side from the database values, scaled to the chosen portion. Anonymous entries (`log_meal`, `log_food`) remain the default path for photo and estimate-based logging.
 
 ## Accuracy disclaimer
 
